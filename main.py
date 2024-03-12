@@ -5,9 +5,6 @@ import torch.nn.functional as F
 import numpy as np
 from transformers import GPT2Tokenizer, GPT2LMHeadModel
 
-# import sample_from_gpt2
-# sys.path.append('..')
-
 def hotflip_attack(averaged_grad, embedding_matrix, trigger_token_ids,
                    increase_loss=False, num_candidates=1):
     """
@@ -55,13 +52,13 @@ def add_hooks(language_model):
         if isinstance(module, torch.nn.Embedding):
             if module.weight.shape[0] == 50257: # only add a hook to wordpiece embeddings, not position
                 module.weight.requires_grad = True
-                module.register_backward_hook(extract_grad_hook)
+                module.register_full_backward_hook(extract_grad_hook)
 
 # Gets the loss of the target_tokens using the triggers as the context
 def get_loss(language_model, batch_size, trigger, target, device='cuda'):
     # context is trigger repeated batch size
     tensor_trigger = torch.tensor(trigger, device=device, dtype=torch.long).unsqueeze(0).repeat(batch_size, 1)
-    mask_out = -1 * torch.ones_like(tensor_trigger) # we zero out the loss for the trigger tokens
+    mask_out = 0 * torch.ones_like(tensor_trigger) # we zero out the loss for the trigger tokens
     lm_input = torch.cat((tensor_trigger, target), dim=1) # we feed the model the trigger + target texts
     mask_and_target = torch.cat((mask_out, target), dim=1) # has -1's + target texts for loss computation
     lm_input[lm_input == -1] = 1   # put random token of 1 at end of context (its masked out)
@@ -82,7 +79,7 @@ def make_target_batch(tokenizer, device, target_texts):
     # pad tokens, i.e., append -1 to the end of the non-longest ones
     for indx, encoded_text in enumerate(encoded_texts):
         if len(encoded_text) < max_len:
-            encoded_texts[indx].extend([-1] * (max_len - len(encoded_text)))
+            encoded_texts[indx].extend([0] * (max_len - len(encoded_text)))
 
     # convert to tensors and batch them up
     target_tokens_batch = None
@@ -102,8 +99,8 @@ def run_model():
     print("Using", "cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
-    model = GPT2LMHeadModel.from_pretrained('gpt2')
+    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
+    model = GPT2LMHeadModel.from_pretrained("gpt2")
     model.eval()
     model.to(device)
 
@@ -193,6 +190,7 @@ def run_model():
                     # get loss, update current best if its lower loss
                     curr_loss = get_loss(model, batch_size, candidate_trigger_tokens,
                                          target_tokens, device)
+                    print("get loss", curr_loss)
                     if curr_loss < curr_best_loss:
                         curr_best_loss = curr_loss
                         curr_best_trigger_tokens = deepcopy(candidate_trigger_tokens)
