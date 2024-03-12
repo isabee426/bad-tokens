@@ -95,9 +95,11 @@ def make_target_batch(tokenizer, device, target_texts):
     return target_tokens_batch
 
 def run_model():
+    global extracted_grads
     np.random.seed(0)
     torch.random.manual_seed(0)
     torch.cuda.manual_seed(0)
+    print("Using", "cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     tokenizer = GPT2Tokenizer.from_pretrained('gpt2')
