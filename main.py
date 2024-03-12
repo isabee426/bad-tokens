@@ -3,7 +3,7 @@ import sys
 import torch
 import torch.nn.functional as F
 import numpy as np
-from transformers import GPT2Tokenizer, GPT2LMHeadModel
+from transformers import AutoTokenizer, AutoModelForCausalLM
 
 def hotflip_attack(averaged_grad, embedding_matrix, trigger_token_ids,
                    increase_loss=False, num_candidates=1):
@@ -99,8 +99,8 @@ def run_model():
     print("Using", "cuda" if torch.cuda.is_available() else "cpu")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    tokenizer = GPT2Tokenizer.from_pretrained("gpt2")
-    model = GPT2LMHeadModel.from_pretrained("gpt2")
+    tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-small")
+    model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-small")
     model.eval()
     model.to(device)
 
