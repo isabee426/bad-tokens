@@ -55,7 +55,7 @@ def add_hooks(language_model):
         if isinstance(module, torch.nn.Embedding):
             if module.weight.shape[0] == 50257: # only add a hook to wordpiece embeddings, not position
                 module.weight.requires_grad = True
-                module.register_backward_hook(utils.extract_grad_hook)
+                module.register_backward_hook(extract_grad_hook)
 
 # Gets the loss of the target_tokens using the triggers as the context
 def get_loss(language_model, batch_size, trigger, target, device='cuda'):
@@ -170,13 +170,13 @@ def run_model():
                     continue
 
                 # Get average gradient w.r.t. the triggers
-                utils.extracted_grads = [] # clear the gradient from past iterations
+                extracted_grads = [] # clear the gradient from past iterations
                 loss.backward()
-                averaged_grad = torch.sum(utils.extracted_grads[0], dim=0)
+                averaged_grad = torch.sum(extracted_grads[0], dim=0)
                 averaged_grad = averaged_grad[token_to_flip].unsqueeze(0)
 
                 # Use hotflip (linear approximation) attack to get the top num_candidates
-                candidates = attacks.hotflip_attack(averaged_grad, embedding_weight,
+                candidates = hotflip_attack(averaged_grad, embedding_weight,
                                                     [trigger_tokens[token_to_flip]],
                                                     increase_loss=False, num_candidates=100)[0]
 
